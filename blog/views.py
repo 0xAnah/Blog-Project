@@ -4,6 +4,7 @@ from django.core.paginator import Paginator
 from django.views.generic import ListView
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
+from taggit.models import Tag
 from .models import Post
 from .forms import EmailPostForm, CommentForm
 
@@ -15,26 +16,30 @@ class PostListView(ListView):
     paginate_by = 3
     template_name = 'blog/post/list.html'
 
-
-def post_list(request):
-    """ 
-    This is a function based view for the post list but it is 
-    not in use by any url or template the above class based view is
-    used in place of it but I left it because as at this time I prefer
-    function based view over class based views, I think they are simpler
-    to write and undersatnd as compared to class based view that has abstracted
-    a lot of functionality. But it is important to note that class based views
-    saves us from a lot of redundant code.
-    """
-    posts = Post.published.all()
-
-    paginator = Paginator(posts, 3)
+""" 
+This is a function based view for the post list but it is 
+not in use by any url or template the above class based view is
+used in place of it but I left it because as at this time I prefer
+function based view over class based views, I think they are simpler
+to write and undersatnd as compared to class based view that has abstracted
+a lot of functionality. But it is important to note that class based views
+saves us from a lot of redundant code.
+"""
+def post_list(request, tag_slug=None):
+    post_list = Post.published.all()
+    
+    tag = None
+    if tag_slug:
+        tag = get_object_or_404(Tag, slug=tag_slug)
+        post_list = post_list.filter(tags__in=[tag])
+    # paginator with 3 posts per page
+    paginator = Paginator(post_list, 3)
     page_number = request.GET.get('page', 1)
     posts = paginator.get_page(page_number)
-    context = {'posts':posts}
+    context = {'posts':posts, 'tag': tag}
 
     return render(request, 'blog/post/list.html', context=context)
-
+ 
 
 def post_detail(request, year, month, day, post):
     post = get_object_or_404(
